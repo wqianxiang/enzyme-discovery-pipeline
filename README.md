@@ -1,4 +1,4 @@
-# enzyme-discovery-pipeline
+# EnzyQXminer
 author: qianxiang wei
 
 structure
