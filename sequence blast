@@ -1,5 +1,5 @@
 print("--------------------------------------------------------------------")
-print("This was created by Qianxiang, from HKUST-GZ")
+print("This was created by Qianxiang😊, from HKUST-GZ🏫")
 print("I would recommend you to use this pipleine in WSL or Linux system")
 print("--------------------------------------------------------------------")
 
@@ -10,211 +10,489 @@ import time
 import argparse
 import shutil
 import glob
+import re
+import sys
+import textwrap
+from pathlib import Path
+import pandas as pd
+import matplotlib.pyplot as plt
+import tqdm
+import re
 
-def check_wget():
-    print("Checking wget...")
-    #检查系统中是否已经安装了wget命令
+def check_system():
+    #检查用户系统(mac,windows,linux)
+    print("Checking your system..., please wait...")
+    time.sleep(1)
+    if sys.platform.startswith('linux'):
+        print("Your system is Linux.")
+        system = 'linux'
+    elif sys.platform.startswith('darwin'):
+        print("Your system is MacOS.")
+        system = 'MacOS'
+    elif sys.platform.startswith('win'):
+        print("Your system is Windows.")
+        system = 'Windows'
+    else:
+        print("Unsupported system.")
+        sys.exit(1)
+    return system
+
+def add_file_to_path(file_path):
+    #获取文件中需要添加到路径中的文件
+    if system == 'linux' or system == 'MacOS':
+        shell = os.environ.get('SHELL', '')
+        if 'zsh' in shell:
+            path = os.path.expanduser("~/.zshrc")
+        else:
+            path = os.path.expanduser("~/.bashrc")
+        with open(path, 'r') as f:
+            content = f.read()
+        line = f'export PATH="{file_path}:$PATH"'
+        if line not in content:
+            with open(path, 'a') as f:
+                f.write(f'\n{line}\n')
+                print(f"{file_path} has been added to PATH environment variable. Please restart your terminal for the changes to take effect.")
+    elif system == 'Windows':
+        print("I would recommend you to use WSL or Linux system to run this pipeline, but if you want to run it in Windows, please add the BLAST+ bin directory to your PATH environment variable manually.")
+    else:
+        print("Unsupported system.")
+        sys.exit(1)
+
+def check_software_installation():
+    time.sleep(1)
     try:
-        if shutil.which("wget") is not None:
+        if shutil.which("wget")is not None:
             print("wget is already installed.")
-            return True
         else:
             print("wget is not installed.")
-            #询问用户是否同意安装wget，yes则安装，no则进行下一任务
-            while True:
-                user_input = input("Do you want to install wget? (yes/no): ").strip().lower()
-                if user_input == 'yes':
-                    try:
-                        subprocess.run(['sudo', 'apt-get', 'update'], check=True)
-                        subprocess.run(['sudo', 'apt-get', 'install', '-y', 'wget'], check=True)
-                        print("wget installed successfully.")
-                        return True
-                    except subprocess.CalledProcessError as e:
-                        print(f"Error installing wget: {e}")
-                        return False
-                elif user_input == 'no':
-                    print("Skipping wget installation.")
-                    return False
-                else:
-                    print("Invalid input. Please enter 'yes' or 'no'.")
-            return False
-    except Exception as e:
-        print(f"Error checking wget: {e}")
-        return False   
-
-
-def check_blast():
-    try:
-        if shutil.which("blastp") is not None:
-            print("BLAST+ is already installed.")
-            return True
-        else:
-            print("BLAST+ command not found. Please install BLAST+ and ensure it is in your system PATH.")
-            #检查是否有解压后的blast文件，如果有则提示用户将其添加到系统PATH中
-            blast_path = glob.glob("*ncbi-blast*")
-            if blast_path:
-                print(f"Found BLAST+ directory: {blast_path[0]}.")
-                #将bin文件添加到系统PATH中并永久修改
-                bin_path = os.path.join(blast_path[0], "bin")
-                if os.path.exists(bin_path):
-                    print(f"Adding {bin_path} to system PATH.")
-                    os.environ["PATH"] += os.pathsep + bin_path
-                    #永久修改系统PATH
-                    with open(os.path.expanduser("~/.bashrc"), "a") as f:
-                        f.write(f'\nexport PATH="$PATH:{bin_path}"\n')
-                    print("BLAST+ added to system PATH. Please restart your terminal or run 'source ~/.bashrc' to apply the changes.")
-                    return True
-                else:
-                    print(f"Error: BLAST+ bin directory not found in {blast_path[0]}. Please check the contents of the directory.")
-                    return False
-            else:
-                print("BLAST+ directory not found. Please download and extract BLAST+ from the NCBI website, and ensure it is in your system PATH.")
-                #询问用户是否同意下载BLAST+，yes则下载，no则进行下一任务
-                while True:
-                    user_input = input("Do you want to download BLAST+? (yes/no): ").strip().lower()
+            user_input = input("Do you want to install wget? (yes/no): ").strip().lower()
+            if user_input == 'yes':
+                if system == 'linux':
+                    subprocess.run(['sudo', 'apt-get', 'install', '-y', 'wget'], check=True)
+                elif system =='MacOS':
+                    user_input = input("Have you installed Homebrew? (yes/no): ").strip().lower()
                     if user_input == 'yes':
-                        try:
-                            blast_url = "https://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/ncbi-blast-*-x64-linux.tar.gz"
-                            subprocess.run(['wget', blast_url, '-O', 'blast.tar.gz'], check=True)
-                            subprocess.run(['tar', '-xzf', 'blast.tar.gz'], check=True)
-                            os.remove('blast.tar.gz')
-                            print("BLAST+ downloaded and extracted successfully. Please ensure the blastp executable is in your system PATH.")
-                            #解压tar.gz文件，将解压后的文件夹添加到系统PATH中并永久修改
-                            blast_path = glob.glob("*ncbi-blast*")
-                            if blast_path:
-                                bin_path = os.path.join(blast_path[0], "bin")
-                                if os.path.exists(bin_path):
-                                    print(f"Adding {bin_path} to system PATH.")
-                                    os.environ["PATH"] += os.pathsep + bin_path
-                                    #永久修改系统PATH
-                                    with open(os.path.expanduser("~/.bashrc"), "a") as f:
-                                        f.write(f'\nexport PATH="$PATH:{bin_path}"\n')
-                                    print("BLAST+ added to system PATH. Please restart your terminal or run 'source ~/.bashrc' to apply the changes.")
-                            return True
-                        except subprocess.CalledProcessError as e:
-                            print(f"Error downloading or extracting BLAST+: {e}")
-                            return False
+                        subprocess.run(['brew', 'install', 'wget'], check=True)
                     elif user_input == 'no':
-                        print("Skipping BLAST+ download.")
-                        return False
+                        print("Please install Homebrew and then run this script again.")
+                        sys.exit(1)
                     else:
-                        print("Invalid input. Please enter 'yes' or 'no'.")
+                        print("Please type yes or no")
+                        sys.exit(1)
+                elif sys.platform.startswith('win'):
+                    print("Please download wget for Windows from https://eternallybored.org/misc/wget/ and add it to your PATH environment variable.")
+                    sys.exit(1)
+            else:
+                print("wget is required to run this pipeline.")
+                sys.exit(1)
+    except subprocess.CalledProcessError as e:
+        print(f"Error installing wget: {e}")
+        sys.exit(1)
+    print("💐All required softwares are installed, move to the next step.")
+    print("--------------------------------------------------------------------")
+
+def check_blast_installation():
+    time.sleep(1)
+    try:
+        #检查系统中是否已经安装了blastp命令
+        if shutil.which("blastp") is not None:
+            print("BLAST+ command is available.")
+            print("💐BLAST+ is ready to use.")
+            print("--------------------------------------------------------------------")
+            return True
+        
+        #检查当前目录中是否已经存在BLAST+的安装包或解压后的文件夹
+        elif glob.glob("ncbi-blast-*.tar.gz"):
+            print("BLAST+ compressed package is founded in the current directory.")
+            blast_dir = glob.glob("ncbi-blast-*.tar.gz")[0]
+            subprocess.run(['tar', '-xzf', blast_dir], check=True)
+            blast_dir = glob.glob("ncbi-blast-*")[0]
+            blast_bin = os.path.join(blast_dir, 'bin')
+            add_file_to_path(blast_bin)
+            if shutil.which("blastp"):
+                print("BLAST+ command is available.")
+                print("💐BLAST+ is ready to use.")
+                print("--------------------------------------------------------------------")
+                return True
+            else:
+                print("BALST+ bin directory can not be added into PATH environmnet, please check")
+                sys.exit(1)
+
+        elif glob.glob("ncbi-blast-*"):
+            blast_dir = glob.glob("ncbi-blast-*")[0]
+            blast_bin = os.path.join(blast_dir, 'bin')
+            add_file_to_path(blast_bin)
+            if shutil.which("blastp"):
+                print("BLAST+ command is available.")
+                print("💐BLAST+ is ready to use.")
+                print("--------------------------------------------------------------------")
+                return True
+            else:
+                print("BALST+ bin directory can not be added into PATH environmnet, please check")
+                sys.exit(1)
+
+        #如果没有安装BLAST+，询问用户是否需要安装
+        else:
+            user_input = input("Do you want to download and install BLAST+? (yes/no): ").strip().lower()
+            if user_input == 'yes':
+                blast_url = {"1": "https://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/ncbi-blast-*-x64-linux.tar.gz",
+                                "2": "https://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/ncbi-blast-*-x64-windows.tar.gz",
+                                "3": "https://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/ncbi-blast-*-x64-macos.tar.gz"}
+                edition_selection = input("Please select the edition of BLAST+ to download?:(1) 2.17.0 (2) other edition (please specify the version number): ").strip()
+                if edition_selection == '1':
+                    blast_url = {key: url.replace("*", "2.17.0") for key, url in blast_url.items()}
+                    if system == 'linux':
+                        blast_url = blast_url["1"]
+                    elif system == 'Windows':
+                        blast_url = blast_url["2"]
+                    elif system == 'MacOS':
+                        blast_url = blast_url["3"]
+
+                    subprocess.run(['wget', blast_url, '-O', 'ncbi-blast.tar.gz'], check=True)
+                    subprocess.run(['tar', '-xzf', 'ncbi-blast.tar.gz'], check=True)
+                    os.remove('ncbi-blast.tar.gz')
+                    # 添加BLAST+的bin目录到PATH环境变量
+                    blast_dir = "ncbi-blast"
+                    blast_bin = os.path.join(blast_dir, 'bin')
+                    add_file_to_path(blast_bin)
+                    print("BLAST+ has been downloaded and installed.")
+                    print("💐BLAST+ is ready to use.")
+                    print("--------------------------------------------------------------------")
+                    return True
+
+                elif re.fullmatch(r"\d+(\.\d+)*", edition_selection):
+                    blast_url = {key: url.replace("*", edition_selection) for key, url in blast_url.items()}
+                    if system == 'linux':
+                        blast_url = blast_url["1"]
+                    elif system == 'Windows':
+                        blast_url = blast_url["2"]
+                    elif system == 'MacOS':
+                        blast_url = blast_url["3"]
+                    else:
+                        print("Unsupported system.")
+                        sys.exit(1)
+                else:
+                    print("Invalid input, please type like 2.17.0 format")
+                    sys.exit()
+
+            elif user_input == 'no':
+                print("Skipping BLAST+ download. Please add the blastp command into path")
                 return False
+            else:
+                print("Invalid input.")
+                sys.exit()
     except Exception as e:
-        print(f"Error checking BLAST+: {e}")
-        return False
+        print(f"Error checking BLAST+ installation: {e}")
+        sys.exit()
 
+def check_blast_database(input_database):
+    time.sleep(1)
+    #检查用户指定的 BLAST 数据库是否存在
+    if input_database:
+        required_files = [
+            f"{input_database}.pin",
+            f"{input_database}.psq",
+            f"{input_database}.phr"
+        ]
 
-def check_database(input_name):
-    if os.path.exists(input_name):
-        print(f"BLAST database '{input_name}' already exists. Skipping download.")
-        return input_name
+        # 数据库存在
+        if all(os.path.exists(file) for file in required_files):
+            print(f"BLAST+ database '{input_database}' is ready.")
+            return input_database
 
-    print("Downloading BLAST database...")
-
-    while True:
-        user_input = input(
-            "Which BLAST database do you want to download? "
-            "1: nr, 2: swissprot, 3: uniprot_trembl, 4: uniprot-Swiss-prot "
-        ).strip().lower()
-
-        if user_input == '1' or 'nr' in user_input:
-            database_name = "nr"
-            url = "https://ftp.ncbi.nlm.nih.gov/blast/db/FASTA/nr.gz"
-            break
-        elif user_input == '2' or 'swissprot' in user_input:
-            database_name = "swissprot"
-            url = "https://ftp.ncbi.nlm.nih.gov/blast/db/FASTA/swissprot.gz"
-            break
-        elif user_input == '3' or 'uniprot_trembl' in user_input:
-            database_name = "uniprot_trembl.fasta"
-            url = "https://ftp.uniprot.org/pub/databases/uniprot/knowledgebase/complete/uniprot_trembl.fasta.gz"
-            break
-        elif user_input == '4' or 'uniprot-swiss-prot' in user_input or 'uniprot_sprot' in user_input:
-            database_name = "uniprot_sprot.fasta"
-            url = "https://ftp.uniprot.org/pub/databases/uniprot/knowledgebase/complete/uniprot_sprot.fasta.gz"
-            break
+        # 数据库不存在
         else:
-            print("Invalid input. Please enter 1, 2, 3, or 4. or you can directly input the database name (nr, swissprot, uniprot_trembl, uniprot_swissprot).")
+            print(f"Can not find database '{input_database}'.")
+            print("Start building or downloading database...")
+            return download_blast_database(input_database)
 
-    if os.path.exists(database_name):
-        print(f"BLAST database '{database_name}' already exists. Skipping download.")
-        return database_name
+    # 用户没有提供数据库
+    else:
+        print("No BLAST database was provided.")
+        return download_blast_database(blast_database)
 
-    try:
-        subprocess.run(['wget', '-c', url], check=True)
-        subprocess.run(['gunzip', database_name + ".gz"], check=True)
-        print("BLAST database downloaded and extracted successfully.")
-        return database_name
-    except subprocess.CalledProcessError as e:
-        print(f"Error downloading or extracting BLAST database: {e}")
+def download_blast_database(input_database):
+    time.sleep(1)
+    #下载建库所需的数据库
+    user_input = input("1: Do you want to download and build the BLAST+ database or 2: you have your own database? (1/2):").strip().lower()
+    if user_input == '1':
+        choice = input(
+        """
+        Please select the database to download?
+        1: nr (non-redundant protein sequences) (recommended for general use)
+        2: swissprot (manually annotated and reviewed protein sequences) (recommended for high-quality annotations)
+        3: uniprot_trembl (automatically annotated and unreviewed protein sequences) (recommended for comprehensive annotations)
+        4: uniprot-swiss-prot (manually annotated and reviewed protein sequences from UniProt) (recommended for high-quality annotations)
+        """.strip())
+
+        if choice == '1':
+            blast_database_url = "https://ftp.ncbi.nlm.nih.gov/blast/db/FASTA/nr.gz"
+            blast_database = "nr"
+        elif choice == '2':
+            blast_database_url = "https://ftp.ncbi.nlm.nih.gov/blast/db/FASTA/swissprot.gz"
+            blast_database = "swissprot"
+        elif choice == '3':
+            blast_database_url = "https://ftp.uniprot.org/pub/databases/uniprot/knowledgebase/complete/uniprot_trembl.fasta.gz"
+            blast_database = "uniprot_trembl"
+        elif choice == '4':
+            blast_database_url = "https://ftp.uniprot.org/pub/databases/uniprot/knowledgebase/complete/uniprot_sprot.fasta.gz"
+            blast_database = "uniprot_sprot"
+        else:
+            print("Invalid input.")
+            sys.exit(1)
+
+        # 下载数据库文件
+        subprocess.run(['wget', blast_database_url, '-O', f'{blast_database}.gz'], check=True)
+        subprocess.run(['gunzip', f'{blast_database}.gz'], check=True)
+        subprocess.run(['makeblastdb', '-in', f'{blast_database}', '-dbtype', 'prot', '-out', f'{blast_database}', '-parse_seqids'], check=True)
+        print("BLAST+ database has been downloaded and built.")
+        return blast_database
+
+    elif user_input == '2':
+        print("Please drag your own database in FASTA format into the current directory and rename it as 'custom.fasta', then run this script again.")
+        for _ in tqdm.tqdm(range(300), desc="Waiting for you to prepare your own database...", leave=True):
+            time.sleep(1)
+            if os.path.exists('custom.fasta'):
+                blast_database = "custom"
+                subprocess.run(['makeblastdb', '-in', f'{blast_database}.fasta', '-dbtype', 'prot', '-out', f'{blast_database}', '-parse_seqids'], check=True)
+                print("BLAST+ database has been downloaded and built.")
+                return blast_database
+        print("Time's up. Please prepare your own database and run this script again.")
+        sys.exit(1)
+    else:
+        print("Invalid input.")
         sys.exit(1)
 
-
-#使用check_databse函数下载的数据库文件创建BLAST数据库
-def make_blast_db(db_file):
+def run_blast(query, blast_database, output_file, threshold, length_threshold, max_target_seqs, evalue, outfmt):
+    blast_cmd = ["blastp", 
+                "-query", query, 
+                "-max_target_seqs", str(max_target_seqs), 
+                "-db", blast_database, 
+                "-out", output_file, 
+                "-outfmt", outfmt, 
+                "-evalue", str(evalue), 
+                "-num_threads", str(os.cpu_count())]
     try:
-        # 检查数据库文件是否已经存在
-        if os.path.exists(db_file + ".db.phr"):
-            print(f"BLAST database '{db_file}.db' already exists. Skipping database construction.")
-            return
-        else:
-            print(f"Constructing BLAST database from '{db_file}'...")
-            subprocess.run(['makeblastdb', '-in', db_file, '-dbtype', 'prot', '-out', db_file + ".db"], check=True)
-            print("BLAST database constructed successfully.")
-    except subprocess.CalledProcessError as e:
-        print(f"Error constructing BLAST database: {e}")
-        sys.exit(1)
-
-def run_blast(query, db_file, output, identity_threshold=90, length_threshold=150, max_target_seqs=100000000, evalue=1e-5, outfmt=6):
-    blast_cmd = f"blastp -query {query} -max_target_seqs {max_target_seqs} -db {db_file}.db -out {output} -outfmt {outfmt} -num_threads {os.cpu_count()}"
-    try:
-        subprocess.run(blast_cmd, shell=True, check=True)
-        # 添加筛选标准，相似度大于等于90%的结果不保留，序列长度小于150的结果不保留
-        if os.path.exists(output):
-            with open(output, 'r') as f:
-                lines = f.readlines()
-            with open(output, 'w') as f:
-                for line in lines:
-                    columns = line.strip().split('\t')
-                    if len(columns) < 12:
-                        continue
-                    identity = float(columns[2])
-                    alignment_length = int(columns[3])
-                    if identity <= identity_threshold and alignment_length >= length_threshold:
-                        f.write(line)
-        print(f"BLAST search completed successfully. Results saved to {output}.")
+        subprocess.run(blast_cmd, check=True)
+        return True
     except subprocess.CalledProcessError as e:
         print(f"Error running BLAST: {e}")
         sys.exit(1)
 
-def main():
+def process_blast_results(output_file, threshold, length_threshold, blast_database, processed_result):
+    blast_columns = [
+        'qseqid', 'sseqid', 'pident', 'length', 'mismatch', 'gapopen',
+        'qstart', 'qend', 'sstart', 'send', 'evalue', 'bitscore', 'stitle'
+    ]
+    threshold_percent = threshold * 100 if threshold <= 1 else threshold
+    sequence_output = processed_result + ".fasta"
+    seen_sseqids = set()
+    filtered_lines = []
+    filtered_sseqids = []
 
+    #筛选相似度小于等于阈值，序列长度大于等于长度阈值的结果
+    with open(output_file, 'r') as f:
+        lines = f.readlines()
+
+    # 1. 保存过滤后的 BLAST 表格结果，给后续 pd.read_csv 和画图使用
+    with open(processed_result, 'w') as f:
+        f.write('\t'.join(blast_columns) + '\n')
+        for line in lines:
+            columns = line.strip().split('\t')
+            if len(columns) < 4:
+                continue
+            sseqid = columns[1]
+            identity = float(columns[2])
+            alignment_length = int(columns[3])
+            if identity <= threshold_percent and alignment_length >= length_threshold and sseqid not in seen_sseqids:
+                f.write(line)
+                filtered_lines.append(line)
+                seen_sseqids.add(sseqid)
+                filtered_sseqids.append(sseqid.split("||")[1] if "||" in sseqid else sseqid)
+
+    # 2. 使用 blastdbcmd 从最终使用的数据库中提取过滤命中的完整 subject 序列
+    with open(sequence_output, 'w') as f:
+        for sseqid in filtered_sseqids:
+            try:
+                subject_sequence = subprocess.run(
+                    ['blastdbcmd', '-db', blast_database, '-entry', sseqid, '-outfmt', '%f'],
+                    check=True,
+                    text=True,
+                    capture_output=True
+                )
+                f.write(subject_sequence.stdout)
+            except subprocess.CalledProcessError as e:
+                print(f"Warning: failed to extract sequence '{sseqid}' from database '{blast_database}': {e}")
+
+    print(f"Number of filtered sequences: {len(filtered_lines)}")
+    print(f"Number of unfiltered sequences: {len(lines) - len(filtered_lines)}")
+    print(f"Finished processing BLAST results.")
+    print(f"Filtered BLAST table saved to: {processed_result}")
+    print(f"Filtered subject sequences saved to: {sequence_output}")
+    return filtered_lines
+
+def plot_blast_results(output_file, out_prefix="blast_results_distribution"):
+    try:
+        def extract_protein(stitle):
+            if pd.isna(stitle):
+                return "Unknown"
+            match = re.search(r"Full=([^;]+)", str(stitle))
+            return match.group(1).strip() if match else "Unknown"
+
+        def extract_species(stitle):
+            if pd.isna(stitle):
+                return "Unknown"
+            match = re.search(r"\[([^\]]+)\]", str(stitle))
+            return match.group(1).strip() if match else "Unknown"
+
+        df = pd.read_csv(output_file, sep="\t")
+
+        if df.empty:
+            print("No filtered BLAST results found. Skip plotting.")
+            return
+
+        if "stitle" not in df.columns:
+            raise ValueError("Input file must contain a 'stitle' column.")
+
+        df["protein_name"] = df["stitle"].apply(extract_protein)
+        df["species"] = df["stitle"].apply(extract_species)
+
+        protein_counts = df["protein_name"].value_counts().head(20).sort_values()
+        species_counts = df["species"].value_counts().head(20).sort_values()
+
+        # Nature-like restrained palette
+        palette = {
+            "protein": "#4C78A8",
+            "species": "#72B7B2",
+            "text": "#222222",
+            "grid": "#D9D9D9",
+            "axis": "#333333",
+        }
+
+        plt.rcParams.update({
+            "font.family": "sans-serif",
+            "font.size": 8,
+            "axes.titlesize": 10,
+            "axes.labelsize": 9,
+            "xtick.labelsize": 8,
+            "ytick.labelsize": 8,
+            "axes.linewidth": 0.8,
+            "pdf.fonttype": 42,
+            "ps.fonttype": 42,
+        })
+
+        fig, axes = plt.subplots(1, 2, figsize=(7.2, 3.6), dpi=300)
+
+        def draw_barh(ax, counts, title, color):
+            labels = [textwrap.fill(x, width=34) for x in counts.index]
+            bars = ax.barh(labels, counts.values, color=color, edgecolor="none")
+
+            ax.set_title(title, loc="left", fontweight="bold", color=palette["text"])
+            ax.set_xlabel("Number of hits")
+            ax.grid(axis="x", color=palette["grid"], linewidth=0.6)
+            ax.set_axisbelow(True)
+
+            ax.spines["top"].set_visible(False)
+            ax.spines["right"].set_visible(False)
+            ax.spines["left"].set_color(palette["axis"])
+            ax.spines["bottom"].set_color(palette["axis"])
+            ax.tick_params(axis="both", colors=palette["text"], length=3)
+
+            max_value = counts.max() if len(counts) else 0
+            ax.set_xlim(0, max_value * 1.15 if max_value else 1)
+
+            for bar in bars:
+                width = bar.get_width()
+                ax.text(
+                    width + max_value * 0.02,
+                    bar.get_y() + bar.get_height() / 2,
+                    f"{int(width)}",
+                    va="center",
+                    ha="left",
+                    fontsize=8,
+                    color=palette["text"],
+                )
+
+        draw_barh(
+            axes[0],
+            protein_counts,
+            "a  Top 20 protein names",
+            palette["protein"],
+        )
+
+        draw_barh(
+            axes[1],
+            species_counts,
+            "b  Top 20 species",
+            palette["species"],
+        )
+
+        fig.tight_layout(w_pad=2.5)
+
+        out_prefix = Path(out_prefix)
+        fig.savefig(f"{out_prefix}.png", dpi=600, bbox_inches="tight")
+        fig.savefig(f"{out_prefix}.pdf", bbox_inches="tight")
+        plt.close(fig)
+
+        print(f"BLAST results distribution plot saved as '{out_prefix}.png' and '{out_prefix}.pdf'.")
+
+    except Exception as e:
+        print(f"Error plotting BLAST results: {e}")
+        sys.exit(1)
+
+def main():
+    global system
     parser = argparse.ArgumentParser(description="BLAST+ pipeline for protein sequence analysis.")
     parser.add_argument('--query', required=True, help="Path to the query FASTA file.")
-    parser.add_argument('--db', required=True, help="Path to the BLAST database file.")
-    parser.add_argument('--output', required=True, help="Path to save the BLAST results.")
+    parser.add_argument('--blast_database', required=True, help="Path to the BLAST database file.")
+    parser.add_argument('--output_file', required=True, help="Path to save the BLAST results.")
+    parser.add_argument('--threshold', type=float, default=0.9, help="Threshold for filtering BLAST results (default: 0.9).")
+    parser.add_argument('--length_threshold', type=int, default=150, help="Minimum alignment length for reporting matches (default: 150).")
     parser.add_argument('--max_target_seqs', type=int, default=100000000, help="Maximum number of target sequences to report (default: 100000000).")
     parser.add_argument('--evalue', type=float, default=1e-5, help="E-value threshold for reporting matches (default: 1e-5).")
-    parser.add_argument('--outfmt', type=str, default="6", help="Output format for BLAST results (default: 6).")
-    parser.add_argument('--identity_threshold', type=int, default=90, help="Minimum identity percentage for reporting matches (default: 90).")
-    parser.add_argument('--length_threshold', type=int, default=150, help="Minimum alignment length for reporting matches (default: 150).")
+    parser.add_argument('--outfmt', type=str, default="6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore stitle", help="Output format for BLAST results.")
     args = parser.parse_args()
 
-    # 检查wget和BLAST+的安装情况，如果没有安装则提示用户安装
-    check_wget()
-    check_blast()
-    
-    # 获取数据库文件路径
-    database_file = check_database(args.db)
-
-    # 使用check_database函数下载的数据库文件创建BLAST数据库
-    make_blast_db(database_file)
-
-    run_blast(args.query, database_file, args.output, args.identity_threshold, args.length_threshold, args.max_target_seqs, args.outfmt)
-
+    user_input = input("Do you want to start the sequence blast module of EnzyQXminer (yes/no): ").strip().lower()
+    print("--------------------------------------------------------------------")
+    if user_input == 'yes':
+        print("step1🚀: Checking your system... ")
+        system = check_system()
+        print("step2🚀: Checking required software...")
+        check_software_installation()
+        print("step3🚀: Checking BLAST+ installation...")
+        check_blast_installation()
+        print("step4🚀: Checking BLAST+ database...")
+        blast_database = check_blast_database(args.blast_database)
+        print("step5🚀: Running BLAST...")
+        run_blast(
+            args.query,
+            blast_database,
+            args.output_file,
+            args.threshold,
+            args.length_threshold,
+            args.max_target_seqs,
+            args.evalue,
+            args.outfmt
+        )
+        print("step6🚀: Processing BLAST results...")
+        processed_result = args.output_file + ".filtered.txt"
+        filtered_results = process_blast_results(
+            args.output_file,
+            args.threshold,
+            args.length_threshold,
+            blast_database,
+            processed_result
+        )
+        print("step7🚀: Plotting BLAST results...")
+        if filtered_results:
+            plot_blast_results(processed_result)
+        else:
+            print("No filtered BLAST results passed your thresholds. Skip plotting.")
+        print("All steps finished! 🎉")
+    else:
+        print("Sequence blast module do not started.")
+        sys.exit(0)
 if __name__ == "__main__":
     main()
-
-
 
