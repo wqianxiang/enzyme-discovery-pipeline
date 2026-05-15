@@ -22,7 +22,6 @@ import re
 def check_system():
     #检查用户系统(mac,windows,linux)
     print("Checking your system..., please wait...")
-    time.sleep(1)
     if sys.platform.startswith('linux'):
         print("Your system is Linux.")
         system = 'linux'
@@ -59,7 +58,6 @@ def add_file_to_path(file_path):
         sys.exit(1)
 
 def check_software_installation():
-    time.sleep(1)
     try:
         if shutil.which("wget")is not None:
             print("wget is already installed.")
@@ -89,16 +87,13 @@ def check_software_installation():
         print(f"Error installing wget: {e}")
         sys.exit(1)
     print("💐All required softwares are installed, move to the next step.")
-    print("--------------------------------------------------------------------")
 
 def check_blast_installation():
-    time.sleep(1)
     try:
         #检查系统中是否已经安装了blastp命令
         if shutil.which("blastp") is not None:
             print("BLAST+ command is available.")
             print("💐BLAST+ is ready to use.")
-            print("--------------------------------------------------------------------")
             return True
         
         #检查当前目录中是否已经存在BLAST+的安装包或解压后的文件夹
@@ -112,7 +107,6 @@ def check_blast_installation():
             if shutil.which("blastp"):
                 print("BLAST+ command is available.")
                 print("💐BLAST+ is ready to use.")
-                print("--------------------------------------------------------------------")
                 return True
             else:
                 print("BALST+ bin directory can not be added into PATH environmnet, please check")
@@ -125,7 +119,6 @@ def check_blast_installation():
             if shutil.which("blastp"):
                 print("BLAST+ command is available.")
                 print("💐BLAST+ is ready to use.")
-                print("--------------------------------------------------------------------")
                 return True
             else:
                 print("BALST+ bin directory can not be added into PATH environmnet, please check")
@@ -157,7 +150,6 @@ def check_blast_installation():
                     add_file_to_path(blast_bin)
                     print("BLAST+ has been downloaded and installed.")
                     print("💐BLAST+ is ready to use.")
-                    print("--------------------------------------------------------------------")
                     return True
 
                 elif re.fullmatch(r"\d+(\.\d+)*", edition_selection):
@@ -186,7 +178,6 @@ def check_blast_installation():
         sys.exit()
 
 def check_blast_database(input_database):
-    time.sleep(1)
     #检查用户指定的 BLAST 数据库是否存在
     if input_database:
         required_files = [
@@ -212,7 +203,6 @@ def check_blast_database(input_database):
         return download_blast_database(blast_database)
 
 def download_blast_database(input_database):
-    time.sleep(1)
     #下载建库所需的数据库
     user_input = input("1: Do you want to download and build the BLAST+ database or 2: you have your own database? (1/2):").strip().lower()
     if user_input == '1':
@@ -457,14 +447,19 @@ def main():
     print("--------------------------------------------------------------------")
     if user_input == 'yes':
         print("step1🚀: Checking your system... ")
+        time.sleep(1)
         system = check_system()
         print("step2🚀: Checking required software...")
+        time.sleep(1)
         check_software_installation()
         print("step3🚀: Checking BLAST+ installation...")
+        time.sleep(1)
         check_blast_installation()
         print("step4🚀: Checking BLAST+ database...")
+        time.sleep(1)
         blast_database = check_blast_database(args.blast_database)
         print("step5🚀: Running BLAST...")
+        time.sleep(1)
         run_blast(
             args.query,
             blast_database,
@@ -476,6 +471,7 @@ def main():
             args.outfmt
         )
         print("step6🚀: Processing BLAST results...")
+        time.sleep(1)
         processed_result = args.output_file + ".filtered.txt"
         filtered_results = process_blast_results(
             args.output_file,
@@ -485,6 +481,7 @@ def main():
             processed_result
         )
         print("step7🚀: Plotting BLAST results...")
+        time.sleep(1)
         if filtered_results:
             plot_blast_results(processed_result)
         else:
