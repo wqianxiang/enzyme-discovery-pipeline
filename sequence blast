@@ -472,7 +472,7 @@ def main():
         )
         print("step6🚀: Processing BLAST results...")
         time.sleep(1)
-        processed_result = args.output_file + ".filtered.txt"
+        processed_result = args.output_file
         filtered_results = process_blast_results(
             args.output_file,
             args.threshold,
